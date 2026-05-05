@@ -5,12 +5,16 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import {
   appConfig, dbConfig, jwtConfig,
-  mailConfig, stripeConfig, uploadConfig, throttleConfig,
+  mailConfig, stripeConfig,
+  uploadConfig, throttleConfig,
 } from './config';
 import { databaseConfig } from './database/database.config';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+
+// ─── Feature Modules ─────────────────────────────────
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -19,7 +23,8 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
       envFilePath: '.env',
       load: [
         appConfig, dbConfig, jwtConfig,
-        mailConfig, stripeConfig, uploadConfig, throttleConfig,
+        mailConfig, stripeConfig,
+        uploadConfig, throttleConfig,
       ],
     }),
     SequelizeModule.forRootAsync({
@@ -27,23 +32,14 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
       useFactory: databaseConfig,
       inject: [ConfigService],
     }),
+
+    // ─── Feature Modules ───────────────────────────
+    UsersModule,
   ],
   providers: [
-    // ─── Global Exception Filter ─────────────────────────
-    {
-      provide:  APP_FILTER,
-      useClass: AllExceptionsFilter,
-    },
-    // ─── Global Response Interceptor ─────────────────────
-    {
-      provide:  APP_INTERCEPTOR,
-      useClass: ResponseInterceptor,
-    },
-    // ─── Global JWT Auth Guard ───────────────────────────
-    {
-      provide:  APP_GUARD,
-      useClass: JwtAuthGuard,
-    },
+    { provide: APP_FILTER,       useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR,  useClass: ResponseInterceptor },
+    { provide: APP_GUARD,        useClass: JwtAuthGuard },
   ],
 })
 export class AppModule {}
