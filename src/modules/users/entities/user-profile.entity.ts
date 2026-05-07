@@ -20,41 +20,39 @@ export class UserProfile extends Model {
     type: DataType.UUID,
     defaultValue: DataType.UUIDV4,
   })
-  id: string;
+  id!: string;
 
-  // ─── FOREIGN KEY → users table ───────────────────────
   @ForeignKey(() => User)
   @Column({
     type: DataType.UUID,
     allowNull: false,
   })
-  userId: string;
+  userId!: string;
 
   @BelongsTo(() => User)
-  user: User;
+  user!: User;
 
-  // ─── PROFILE FIELDS ──────────────────────────────────
   @Column({
     type: DataType.TEXT,
     allowNull: true,
   })
-  bio: string;
+  bio!: string;
 
   @Column({
     type: DataType.DATE,
     allowNull: true,
   })
-  dateOfBirth: Date;
+  dateOfBirth!: Date;
 
   @Column({
     type: DataType.STRING(10),
     allowNull: true,
   })
-  gender: string;
+  gender!: string;
 
   @Column({
     type: DataType.STRING(100),
     allowNull: true,
   })
-  website: string;
+  website!: string;
 }

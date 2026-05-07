@@ -11,7 +11,6 @@ import {
 
 export class UpdateUserDto {
 
-  // ─── BASIC INFO ──────────────────────────────────────
   @ApiPropertyOptional({ example: 'Shraddha' })
   @IsString()
   @IsOptional()
@@ -34,7 +33,6 @@ export class UpdateUserDto {
   @IsOptional()
   phone?: string;
 
-  // ─── PROFILE INFO ────────────────────────────────────
   @ApiPropertyOptional({ example: 'I love coding!' })
   @IsString()
   @IsOptional()
