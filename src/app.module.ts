@@ -13,8 +13,8 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 
-// ─── Feature Modules ─────────────────────────────────
 import { UsersModule } from './modules/users/users.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
@@ -35,11 +35,12 @@ import { UsersModule } from './modules/users/users.module';
 
     // ─── Feature Modules ───────────────────────────
     UsersModule,
+    AuthModule,
   ],
   providers: [
-    { provide: APP_FILTER,       useClass: AllExceptionsFilter },
-    { provide: APP_INTERCEPTOR,  useClass: ResponseInterceptor },
-    { provide: APP_GUARD,        useClass: JwtAuthGuard },
+    { provide: APP_FILTER,      useClass: AllExceptionsFilter },
+    { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
+    { provide: APP_GUARD,       useClass: JwtAuthGuard },
   ],
 })
 export class AppModule {}
