@@ -7,9 +7,14 @@ import {
 import { InjectModel } from '@nestjs/sequelize';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Op } from 'sequelize';
 import { User } from '../users/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
-import { RegisterDto, LoginDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  RefreshTokenDto,
+} from './dto/auth.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import * as dayjs from 'dayjs';
 
@@ -34,7 +39,6 @@ export class AuthService {
     userAgent?: string,
     ipAddress?: string,
   ) {
-    // Step 1: Check email not already used
     const existingUser = await this.userModel.findOne({
       where: { email: dto.email },
     });
@@ -45,7 +49,6 @@ export class AuthService {
       );
     }
 
-    // Step 2: Create user
     const user = await this.userModel.create({
       firstName: dto.firstName,
       lastName:  dto.lastName,
@@ -54,10 +57,8 @@ export class AuthService {
       phone:     dto.phone,
     } as any);
 
-    // Step 3: Generate tokens
     const tokens = await this.generateTokens(user);
 
-    // Step 4: Save refresh token
     await this.saveRefreshToken(
       user.id,
       tokens.refreshToken,
@@ -83,26 +84,22 @@ export class AuthService {
     userAgent?: string,
     ipAddress?: string,
   ) {
-    // Step 1: Find user by email
     const user = await this.userModel.findOne({
       where: { email: dto.email },
     });
 
-    // Step 2: Check user exists
     if (!user) {
       throw new UnauthorizedException(
         'Invalid email or password',
       );
     }
 
-    // Step 3: Check account is active
     if (!user.isActive) {
       throw new UnauthorizedException(
         'Your account has been deactivated. Please contact support.',
       );
     }
 
-    // Step 4: Compare password
     const isPasswordValid = await user.validatePassword(
       dto.password,
     );
@@ -113,13 +110,10 @@ export class AuthService {
       );
     }
 
-    // Step 5: Update last login time
     await user.update({ lastLoginAt: new Date() });
 
-    // Step 6: Generate tokens
     const tokens = await this.generateTokens(user);
 
-    // Step 7: Save refresh token to database
     await this.saveRefreshToken(
       user.id,
       tokens.refreshToken,
@@ -129,13 +123,68 @@ export class AuthService {
 
     this.logger.log(`User logged in: ${user.email}`);
 
-    // Step 8: Return response
     return {
       message: 'Login successful! Welcome back.',
       data: {
         user:         user.toJSON(),
         accessToken:  tokens.accessToken,
         refreshToken: tokens.refreshToken,
+      },
+    };
+  }
+
+  // ─── LOGOUT (single device) ───────────────────────────
+  async logout(
+    userId: string,
+    dto: RefreshTokenDto,
+  ) {
+    // Find the specific refresh token
+    const tokenRecord = await this.refreshTokenModel.findOne({
+      where: {
+        userId,
+        token:     dto.refreshToken,
+        isRevoked: false,
+      },
+    });
+
+    // If token not found → already logged out
+    if (!tokenRecord) {
+      return {
+        message: 'Logged out successfully',
+      };
+    }
+
+    // Revoke the token
+    await tokenRecord.update({ isRevoked: true });
+
+    this.logger.log(`User logged out: ${userId}`);
+
+    return {
+      message: 'Logged out successfully',
+    };
+  }
+
+  // ─── LOGOUT ALL (all devices) ─────────────────────────
+  async logoutAll(userId: string) {
+    // Revoke ALL refresh tokens for this user
+    const revokedCount = await this.refreshTokenModel.update(
+      { isRevoked: true },
+      {
+        where: {
+          userId,
+          isRevoked: false,
+        },
+      },
+    );
+
+    this.logger.log(
+      `User logged out from all devices: ${userId}`,
+    );
+
+    return {
+      message: `Logged out from all devices successfully`,
+      data: {
+        devicesLoggedOut: revokedCount[0],
       },
     };
   }

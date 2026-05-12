@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsEmail,
   IsString,
@@ -42,7 +42,7 @@ export class RegisterDto {
   )
   password!: string;
 
-  @ApiProperty({ example: '+919876543210' })
+  @ApiPropertyOptional({ example: '+919876543210' })
   @IsString()
   @IsOptional()
   phone?: string;
@@ -60,4 +60,13 @@ export class LoginDto {
   @IsString()
   @IsNotEmpty()
   password!: string;
+}
+
+// ─── REFRESH TOKEN DTO ────────────────────────────────
+export class RefreshTokenDto {
+
+  @ApiProperty({ description: 'Refresh token from login' })
+  @IsString()
+  @IsNotEmpty()
+  refreshToken!: string;
 }
