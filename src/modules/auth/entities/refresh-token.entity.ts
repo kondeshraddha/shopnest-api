@@ -15,7 +15,6 @@ import { User } from '../../users/entities/user.entity';
 })
 export class RefreshToken extends Model {
 
-  // ─── PRIMARY KEY ─────────────────────────────────────
   @Column({
     primaryKey: true,
     type: DataType.UUID,
@@ -23,7 +22,6 @@ export class RefreshToken extends Model {
   })
   id!: string;
 
-  // ─── FOREIGN KEY → users ──────────────────────────────
   @ForeignKey(() => User)
   @Column({
     type: DataType.UUID,
@@ -34,14 +32,12 @@ export class RefreshToken extends Model {
   @BelongsTo(() => User)
   user!: User;
 
-  // ─── TOKEN STRING ────────────────────────────────────
   @Column({
     type: DataType.TEXT,
     allowNull: false,
   })
   token!: string;
 
-  // ─── DEVICE INFO ─────────────────────────────────────
   @Column({
     type: DataType.STRING(255),
     allowNull: true,
@@ -54,14 +50,12 @@ export class RefreshToken extends Model {
   })
   ipAddress!: string;
 
-  // ─── STATUS ──────────────────────────────────────────
   @Default(false)
   @Column({
     type: DataType.BOOLEAN,
   })
   isRevoked!: boolean;
 
-  // ─── EXPIRY ──────────────────────────────────────────
   @Column({
     type: DataType.DATE,
     allowNull: false,

@@ -29,7 +29,11 @@ export class RegisterDto {
   @IsNotEmpty()
   email!: string;
 
-  @ApiProperty({ example: 'Shraddha@123' })
+  @ApiProperty({
+    example: 'Shraddha@123',
+    description:
+      'Min 8 chars, uppercase, lowercase, number, special char',
+  })
   @IsString()
   @MinLength(8)
   @MaxLength(50)

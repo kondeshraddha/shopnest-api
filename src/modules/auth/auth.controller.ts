@@ -36,6 +36,18 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({
+    status: 201,
+    description: 'User registered successfully',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'Email already registered',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Validation failed',
+  })
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
@@ -54,6 +66,14 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
+  @ApiResponse({
+    status: 200,
+    description: 'Login successful',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid credentials',
+  })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
