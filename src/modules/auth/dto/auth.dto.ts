@@ -11,7 +11,6 @@ import {
 
 // ─── REGISTER DTO ─────────────────────────────────────
 export class RegisterDto {
-
   @ApiProperty({ example: 'Shraddha' })
   @IsString()
   @IsNotEmpty()
@@ -29,11 +28,7 @@ export class RegisterDto {
   @IsNotEmpty()
   email!: string;
 
-  @ApiProperty({
-    example: 'Shraddha@123',
-    description:
-      'Min 8 chars, uppercase, lowercase, number, special char',
-  })
+  @ApiProperty({ example: 'Shraddha@123' })
   @IsString()
   @MinLength(8)
   @MaxLength(50)
@@ -54,7 +49,6 @@ export class RegisterDto {
 
 // ─── LOGIN DTO ────────────────────────────────────────
 export class LoginDto {
-
   @ApiProperty({ example: 'shraddha@gmail.com' })
   @IsEmail()
   @IsNotEmpty()
@@ -68,8 +62,10 @@ export class LoginDto {
 
 // ─── REFRESH TOKEN DTO ────────────────────────────────
 export class RefreshTokenDto {
-
-  @ApiProperty({ description: 'Refresh token from login' })
+  @ApiProperty({
+    description: 'Refresh token received from login',
+    example: 'eyJhbGciOiJIUzI1NiJ9...',
+  })
   @IsString()
   @IsNotEmpty()
   refreshToken!: string;

@@ -7,6 +7,7 @@ import {
 import { InjectModel } from '@nestjs/sequelize';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { Op } from 'sequelize';
 import { User } from '../users/entities/user.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import {
@@ -38,7 +39,6 @@ export class AuthService {
     userAgent?: string,
     ipAddress?: string,
   ) {
-    // Check email not already registered
     const existingUser = await this.userModel.findOne({
       where: { email: dto.email },
     });
@@ -49,7 +49,6 @@ export class AuthService {
       );
     }
 
-    // Create user (password auto hashed by entity hook)
     const user = await this.userModel.create({
       firstName: dto.firstName,
       lastName:  dto.lastName,
@@ -58,10 +57,8 @@ export class AuthService {
       phone:     dto.phone,
     } as any);
 
-    // Generate tokens
     const tokens = await this.generateTokens(user);
 
-    // Save refresh token to database
     await this.saveRefreshToken(
       user.id,
       tokens.refreshToken,
@@ -87,26 +84,22 @@ export class AuthService {
     userAgent?: string,
     ipAddress?: string,
   ) {
-    // Find user by email
     const user = await this.userModel.findOne({
       where: { email: dto.email },
     });
 
-    // User not found
     if (!user) {
       throw new UnauthorizedException(
         'Invalid email or password',
       );
     }
 
-    // Account deactivated
     if (!user.isActive) {
       throw new UnauthorizedException(
-        'Your account has been deactivated. Please contact support.',
+        'Your account has been deactivated. Contact support.',
       );
     }
 
-    // Wrong password
     const isPasswordValid = await user.validatePassword(
       dto.password,
     );
@@ -117,13 +110,10 @@ export class AuthService {
       );
     }
 
-    // Update last login time
     await user.update({ lastLoginAt: new Date() });
 
-    // Generate tokens
     const tokens = await this.generateTokens(user);
 
-    // Save refresh token
     await this.saveRefreshToken(
       user.id,
       tokens.refreshToken,
@@ -137,6 +127,98 @@ export class AuthService {
       message: 'Login successful! Welcome back.',
       data: {
         user:         user.toJSON(),
+        accessToken:  tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      },
+    };
+  }
+
+  // ─── REFRESH TOKENS ───────────────────────────────────
+  async refreshTokens(
+    dto: RefreshTokenDto,
+    userAgent?: string,
+    ipAddress?: string,
+  ) {
+    // Step 1: Verify refresh token signature
+    let payload: JwtPayload;
+
+    try {
+      payload = this.jwtService.verify<JwtPayload>(
+        dto.refreshToken,
+        {
+          secret: this.configService.get<string>(
+            'jwt.refreshSecret',
+          ),
+        },
+      );
+    } catch (error) {
+      throw new UnauthorizedException(
+        'Refresh token is invalid or expired',
+      );
+    }
+
+    // Step 2: Find token in database
+    const tokenRecord = await this.refreshTokenModel.findOne({
+      where: {
+        token:     dto.refreshToken,
+        userId:    payload.sub,
+        isRevoked: false,
+      },
+    });
+
+    // Token not in DB or already revoked
+    if (!tokenRecord) {
+      throw new UnauthorizedException(
+        'Refresh token has been revoked or does not exist',
+      );
+    }
+
+    // Step 3: Check token not expired
+    const isExpired = dayjs().isAfter(
+      dayjs(tokenRecord.expiresAt),
+    );
+
+    if (isExpired) {
+      // Mark as revoked
+      await tokenRecord.update({ isRevoked: true });
+      throw new UnauthorizedException(
+        'Refresh token has expired. Please login again.',
+      );
+    }
+
+    // Step 4: Find user
+    const user = await this.userModel.findOne({
+      where: {
+        id:       payload.sub,
+        isActive: true,
+      },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'User not found or account deactivated',
+      );
+    }
+
+    // Step 5: Revoke OLD refresh token (Token Rotation)
+    await tokenRecord.update({ isRevoked: true });
+
+    // Step 6: Generate NEW tokens
+    const tokens = await this.generateTokens(user);
+
+    // Step 7: Save NEW refresh token
+    await this.saveRefreshToken(
+      user.id,
+      tokens.refreshToken,
+      userAgent,
+      ipAddress,
+    );
+
+    this.logger.log(`Tokens refreshed for: ${user.email}`);
+
+    return {
+      message: 'Tokens refreshed successfully',
+      data: {
         accessToken:  tokens.accessToken,
         refreshToken: tokens.refreshToken,
       },
@@ -161,7 +243,6 @@ export class AuthService {
     }
 
     await tokenRecord.update({ isRevoked: true });
-
     this.logger.log(`User logged out: ${userId}`);
 
     return { message: 'Logged out successfully' };
@@ -185,13 +266,11 @@ export class AuthService {
 
     return {
       message: 'Logged out from all devices successfully',
-      data: {
-        devicesLoggedOut: revokedCount[0],
-      },
+      data: { devicesLoggedOut: revokedCount[0] },
     };
   }
 
-  // ─── GENERATE TOKENS ─────────────────────────────────
+  // ─── GENERATE TOKENS (private) ───────────────────────
   private async generateTokens(user: User) {
     const payload: JwtPayload = {
       sub:   user.id,
@@ -221,7 +300,7 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  // ─── SAVE REFRESH TOKEN ──────────────────────────────
+  // ─── SAVE REFRESH TOKEN (private) ────────────────────
   private async saveRefreshToken(
     userId:     string,
     token:      string,
@@ -233,7 +312,7 @@ export class AuthService {
         'jwt.refreshExpiresIn',
       ) ?? '7d';
 
-    const days = parseInt(refreshExpiresIn) || 7;
+    const days    = parseInt(refreshExpiresIn) || 7;
     const expiresAt = dayjs().add(days, 'day').toDate();
 
     await this.refreshTokenModel.create({

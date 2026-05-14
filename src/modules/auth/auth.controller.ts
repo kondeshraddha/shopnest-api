@@ -36,28 +36,16 @@ export class AuthController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiResponse({
-    status: 201,
-    description: 'User registered successfully',
-  })
-  @ApiResponse({
-    status: 409,
-    description: 'Email already registered',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'Validation failed',
-  })
+  @ApiResponse({ status: 201, description: 'Registered' })
+  @ApiResponse({ status: 409, description: 'Email exists' })
   async register(
     @Body() dto: RegisterDto,
     @Req() req: Request,
   ) {
-    const userAgent = req.headers['user-agent'];
-    const ipAddress = req.ip;
     return this.authService.register(
       dto,
-      userAgent,
-      ipAddress,
+      req.headers['user-agent'],
+      req.ip,
     );
   }
 
@@ -66,24 +54,40 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login with email and password' })
-  @ApiResponse({
-    status: 200,
-    description: 'Login successful',
-  })
-  @ApiResponse({
-    status: 401,
-    description: 'Invalid credentials',
-  })
+  @ApiResponse({ status: 200, description: 'Login successful' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
   ) {
-    const userAgent = req.headers['user-agent'];
-    const ipAddress = req.ip;
     return this.authService.login(
       dto,
-      userAgent,
-      ipAddress,
+      req.headers['user-agent'],
+      req.ip,
+    );
+  }
+
+  // ─── REFRESH TOKENS ───────────────────────────────────
+  @Public()
+  @Post('refresh')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Refresh access token' })
+  @ApiResponse({
+    status: 200,
+    description: 'New tokens generated',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Invalid or expired refresh token',
+  })
+  async refreshTokens(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.refreshTokens(
+      dto,
+      req.headers['user-agent'],
+      req.ip,
     );
   }
 
@@ -103,10 +107,6 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout from current device' })
-  @ApiResponse({
-    status: 200,
-    description: 'Logged out successfully',
-  })
   logout(
     @CurrentUser('id') userId: string,
     @Body() dto: RefreshTokenDto,
@@ -119,10 +119,6 @@ export class AuthController {
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Logout from all devices' })
-  @ApiResponse({
-    status: 200,
-    description: 'Logged out from all devices',
-  })
   logoutAll(@CurrentUser('id') userId: string) {
     return this.authService.logoutAll(userId);
   }
