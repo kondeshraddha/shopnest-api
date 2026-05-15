@@ -3,6 +3,7 @@ import { SequelizeModuleOptions } from '@nestjs/sequelize';
 import { User } from '../modules/users/entities/user.entity';
 import { UserProfile } from '../modules/users/entities/user-profile.entity';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
+import { Category } from '../modules/categories/entities/category.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -13,27 +14,22 @@ export const databaseConfig = (
   username: configService.get<string>('db.username'),
   password: configService.get<string>('db.password'),
   database: configService.get<string>('db.database'),
-
-  // ─── ALL MODELS MUST BE HERE ─────────────────────
   models: [
     User,
     UserProfile,
     RefreshToken,
+    Category,       // ← add here
   ],
-
-  synchronize:    true,  // ← creates tables automatically
+  synchronize:    true,
   autoLoadModels: true,
-
   logging: configService.get<boolean>('db.logging')
     ? console.log
     : false,
-
   define: {
     underscored: true,
     timestamps:  true,
     paranoid:    true,
   },
-
   pool: {
     max:     10,
     min:     0,
