@@ -4,6 +4,9 @@ import { User } from '../modules/users/entities/user.entity';
 import { UserProfile } from '../modules/users/entities/user-profile.entity';
 import { RefreshToken } from '../modules/auth/entities/refresh-token.entity';
 import { Category } from '../modules/categories/entities/category.entity';
+import { Product } from '../modules/products/entities/product.entity';
+import { ProductImage } from '../modules/products/entities/product-image.entity';
+import { ProductVariant } from '../modules/products/entities/product-variant.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -18,7 +21,10 @@ export const databaseConfig = (
     User,
     UserProfile,
     RefreshToken,
-    Category,       // ← add here
+    Category,
+    Product,         // ← add
+    ProductImage,    // ← add
+    ProductVariant,  // ← add
   ],
   synchronize:    true,
   autoLoadModels: true,

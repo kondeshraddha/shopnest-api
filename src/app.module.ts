@@ -14,6 +14,7 @@ import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { ProductsModule } from './modules/products/products.module';
 
 @Module({
   imports: [
@@ -31,11 +32,10 @@ import { CategoriesModule } from './modules/categories/categories.module';
       useFactory: databaseConfig,
       inject: [ConfigService],
     }),
-
-    // ─── Feature Modules ─────────────────────────
     UsersModule,
     AuthModule,
-    CategoriesModule,   // ← add here
+    CategoriesModule,
+    ProductsModule,   // ← add here
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },
@@ -43,4 +43,4 @@ import { CategoriesModule } from './modules/categories/categories.module';
     { provide: APP_GUARD,       useClass: JwtAuthGuard },
   ],
 })
-export class AppModule {}
+export class AppModule {} 
