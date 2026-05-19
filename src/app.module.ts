@@ -15,6 +15,7 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ProductsModule } from './modules/products/products.module';
+import { CartModule } from './modules/cart/cart.module';
 
 @Module({
   imports: [
@@ -35,7 +36,8 @@ import { ProductsModule } from './modules/products/products.module';
     UsersModule,
     AuthModule,
     CategoriesModule,
-    ProductsModule,   // ← add here
+    ProductsModule,
+    CartModule,     // ← add here
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },
@@ -43,4 +45,4 @@ import { ProductsModule } from './modules/products/products.module';
     { provide: APP_GUARD,       useClass: JwtAuthGuard },
   ],
 })
-export class AppModule {} 
+export class AppModule {}

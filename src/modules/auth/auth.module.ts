@@ -10,14 +10,8 @@ import { RefreshToken } from './entities/refresh-token.entity';
 
 @Module({
   imports: [
-    // Register models needed in auth
     SequelizeModule.forFeature([User, RefreshToken]),
-
-    // Passport for auth strategies
     PassportModule,
-
-    // JWT module - register without config
-    // (we pass secret in service manually)
     JwtModule.register({}),
   ],
   controllers: [AuthController],

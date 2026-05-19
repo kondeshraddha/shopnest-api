@@ -7,6 +7,8 @@ import { Category } from '../modules/categories/entities/category.entity';
 import { Product } from '../modules/products/entities/product.entity';
 import { ProductImage } from '../modules/products/entities/product-image.entity';
 import { ProductVariant } from '../modules/products/entities/product-variant.entity';
+import { Cart } from '../modules/cart/entities/cart.entity';
+import { CartItem } from '../modules/cart/entities/cart-item.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -22,9 +24,11 @@ export const databaseConfig = (
     UserProfile,
     RefreshToken,
     Category,
-    Product,         // ← add
-    ProductImage,    // ← add
-    ProductVariant,  // ← add
+    Product,
+    ProductImage,
+    ProductVariant,
+    Cart,       // ← add
+    CartItem,   // ← add
   ],
   synchronize:    true,
   autoLoadModels: true,
@@ -37,9 +41,7 @@ export const databaseConfig = (
     paranoid:    true,
   },
   pool: {
-    max:     10,
-    min:     0,
-    acquire: 30000,
-    idle:    10000,
+    max: 10, min: 0,
+    acquire: 30000, idle: 10000,
   },
 });
