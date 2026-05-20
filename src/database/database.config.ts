@@ -9,6 +9,8 @@ import { ProductImage } from '../modules/products/entities/product-image.entity'
 import { ProductVariant } from '../modules/products/entities/product-variant.entity';
 import { Cart } from '../modules/cart/entities/cart.entity';
 import { CartItem } from '../modules/cart/entities/cart-item.entity';
+import { Order } from '../modules/orders/entities/order.entity';
+import { OrderItem } from '../modules/orders/entities/order-item.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -20,15 +22,11 @@ export const databaseConfig = (
   password: configService.get<string>('db.password'),
   database: configService.get<string>('db.database'),
   models: [
-    User,
-    UserProfile,
-    RefreshToken,
+    User, UserProfile, RefreshToken,
     Category,
-    Product,
-    ProductImage,
-    ProductVariant,
-    Cart,       // ← add
-    CartItem,   // ← add
+    Product, ProductImage, ProductVariant,
+    Cart, CartItem,
+    Order, OrderItem,    // ← add
   ],
   synchronize:    true,
   autoLoadModels: true,

@@ -16,6 +16,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CartModule } from './modules/cart/cart.module';
+import { OrdersModule } from './modules/orders/orders.module';
 
 @Module({
   imports: [
@@ -37,7 +38,8 @@ import { CartModule } from './modules/cart/cart.module';
     AuthModule,
     CategoriesModule,
     ProductsModule,
-    CartModule,     // ← add here
+    CartModule,  
+    OrdersModule,   // ← add here
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },
