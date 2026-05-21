@@ -11,6 +11,7 @@ import { Cart } from '../modules/cart/entities/cart.entity';
 import { CartItem } from '../modules/cart/entities/cart-item.entity';
 import { Order } from '../modules/orders/entities/order.entity';
 import { OrderItem } from '../modules/orders/entities/order-item.entity';
+import { Review } from '@/modules/reviews/entities/review.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -26,7 +27,8 @@ export const databaseConfig = (
     Category,
     Product, ProductImage, ProductVariant,
     Cart, CartItem,
-    Order, OrderItem,    // ← add
+    Order, OrderItem, 
+    Review,   // ← add
   ],
   synchronize:    true,
   autoLoadModels: true,
