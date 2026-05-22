@@ -18,6 +18,7 @@ import { ProductsModule } from './modules/products/products.module';
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
+import { AddressModule } from './modules/address/address.module';
 
 @Module({
   imports: [
@@ -41,7 +42,8 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
     ProductsModule,
     CartModule,  
     OrdersModule,
-    ReviewsModule // ← add here
+    ReviewsModule,
+    AddressModule, // ← add here
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },

@@ -12,6 +12,7 @@ import { CartItem } from '../modules/cart/entities/cart-item.entity';
 import { Order } from '../modules/orders/entities/order.entity';
 import { OrderItem } from '../modules/orders/entities/order-item.entity';
 import { Review } from '@/modules/reviews/entities/review.entity';
+import { Address } from '@/modules/address/entities/address.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -28,7 +29,8 @@ export const databaseConfig = (
     Product, ProductImage, ProductVariant,
     Cart, CartItem,
     Order, OrderItem, 
-    Review,   // ← add
+    Review,
+    Address,   // ← add
   ],
   synchronize:    true,
   autoLoadModels: true,
