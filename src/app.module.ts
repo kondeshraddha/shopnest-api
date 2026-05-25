@@ -19,6 +19,7 @@ import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AddressModule } from './modules/address/address.module';
+import { WishlistModule } from './modules/wishlist/wishlist.module';
 
 @Module({
   imports: [
@@ -43,7 +44,8 @@ import { AddressModule } from './modules/address/address.module';
     CartModule,  
     OrdersModule,
     ReviewsModule,
-    AddressModule, // ← add here
+    AddressModule,
+    WishlistModule, // ← add here
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },
