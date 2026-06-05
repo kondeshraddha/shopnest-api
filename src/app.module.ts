@@ -2,6 +2,10 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { EventEmitterModule } from '@nestjs/event-emitter';
+import { join } from 'path';
+
 import {
   appConfig, dbConfig, jwtConfig,
   mailConfig, stripeConfig,
@@ -21,11 +25,31 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AddressModule } from './modules/address/address.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { UploadModule } from './modules/upload/upload.module';
+// import { MailModule } from './modules/mail/mail.module';
 
 @Module({
   imports: [
+
+    // ─── Serve Static Files ───────────────────────────
+    ServeStaticModule.forRoot({
+      rootPath:  join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+      serveStaticOptions: {
+        index: false,
+      },
+    }),
+
+    // ─── Event Emitter ────────────────────────────────
+    EventEmitterModule.forRoot({
+      wildcard:          false,
+      delimiter:         '.',
+      maxListeners:      20,
+      verboseMemoryLeak: true,
+    }),
+
+    // ─── Config ───────────────────────────────────────
     ConfigModule.forRoot({
-      isGlobal: true,
+      isGlobal:    true,
       envFilePath: '.env',
       load: [
         appConfig, dbConfig, jwtConfig,
@@ -33,21 +57,26 @@ import { UploadModule } from './modules/upload/upload.module';
         uploadConfig, throttleConfig,
       ],
     }),
+
+    // ─── Database ─────────────────────────────────────
     SequelizeModule.forRootAsync({
-      imports: [ConfigModule],
+      imports:    [ConfigModule],
       useFactory: databaseConfig,
-      inject: [ConfigService],
+      inject:     [ConfigService],
     }),
+
+    // ─── Feature Modules ──────────────────────────────
     UsersModule,
     AuthModule,
     CategoriesModule,
     ProductsModule,
-    CartModule,  
+    CartModule,
     OrdersModule,
     ReviewsModule,
     AddressModule,
     WishlistModule,
-    UploadModule, // ← add here
+    UploadModule,
+  //  MailModule,
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },
