@@ -17,6 +17,8 @@ import {
 } from './dto/auth.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
 import * as dayjs from 'dayjs';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { EVENTS } from '@/common/constants';
 
 @Injectable()
 export class AuthService {
@@ -31,6 +33,7 @@ export class AuthService {
 
     private jwtService: JwtService,
     private configService: ConfigService,
+    private eventEmitter:EventEmitter2
   ) {}
 
   // ─── REGISTER ────────────────────────────────────────
@@ -56,6 +59,12 @@ export class AuthService {
       password:  dto.password,
       phone:     dto.phone,
     } as any);
+
+      // ─── Emit event → Mail service sends welcome email
+  this.eventEmitter.emit(
+    EVENTS.USER_REGISTERED,
+    { user: user.toJSON() },
+  );
 
     const tokens = await this.generateTokens(user);
 
