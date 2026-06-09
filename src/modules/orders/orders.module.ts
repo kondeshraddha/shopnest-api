@@ -7,10 +7,11 @@ import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CartModule } from '../cart/cart.module';
 import { ProductsModule } from '../products/products.module';
+import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
-    SequelizeModule.forFeature([Order, OrderItem]),
+    SequelizeModule.forFeature([Order, OrderItem,User,]),
     CartModule,
     ProductsModule,
   ],

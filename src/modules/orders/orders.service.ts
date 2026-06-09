@@ -2,6 +2,7 @@ import {
   Injectable, NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
 import { OrdersRepository } from './orders.repository';
 import { CartRepository } from '../cart/cart.repository';
 import { ProductsRepository } from '../products/products.repository';
@@ -9,8 +10,10 @@ import {
   CreateOrderDto, CancelOrderDto,
   UpdateOrderStatusDto,
 } from './dto/order.dto';
-import { OrderStatus } from '../../common/constants';
+import { EVENTS, OrderStatus } from '../../common/constants';
 import { paginate } from '../../common/utils/pagination.util';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class OrdersService {
@@ -18,6 +21,11 @@ export class OrdersService {
     private readonly ordersRepository: OrdersRepository,
     private readonly cartRepository: CartRepository,
     private readonly productsRepository: ProductsRepository,
+    private readonly eventEmitter: EventEmitter2,
+
+    // ─── Inject User Model ───────────────────────────
+    @InjectModel(User)
+    private userModel: typeof User,
   ) {}
 
   // ─── PLACE ORDER ─────────────────────────────────────
@@ -41,9 +49,7 @@ export class OrdersService {
         );
 
       if (!product) {
-        throw new NotFoundException(
-          `Product not found`,
-        );
+        throw new NotFoundException('Product not found');
       }
 
       if (product.stock < item.quantity) {
@@ -65,7 +71,7 @@ export class OrdersService {
       (subtotal + tax + shippingCost).toFixed(2),
     );
 
-    // Step 4: Create order
+    // Step 4: Create order data
     const orderData = {
       userId,
       subtotal:        parseFloat(subtotal.toFixed(2)),
@@ -86,9 +92,9 @@ export class OrdersService {
       variantInfo: item.variant
         ? `${item.variant.name}: ${item.variant.value}`
         : null,
-      quantity:    item.quantity,
-      unitPrice:   item.price,
-      totalPrice:  parseFloat(
+      quantity:   item.quantity,
+      unitPrice:  item.price,
+      totalPrice: parseFloat(
         (item.price * item.quantity).toFixed(2),
       ),
     }));
@@ -116,6 +122,23 @@ export class OrdersService {
 
     // Step 8: Clear the cart
     await this.cartRepository.clearCart(cart.id);
+
+    // Step 9: Get user for email
+    const user = await this.userModel.findByPk(userId);
+
+    // Step 10: Emit event → Mail sends confirmation
+    if (user) {
+      this.eventEmitter.emit(
+        EVENTS.ORDER_PLACED,
+        {
+          user: {
+            email:     user.email,
+            firstName: user.firstName,
+          },
+          order: order,
+        },
+      );
+    }
 
     return {
       message: `Order placed successfully! Order number: ${order!.orderNumber}`,
@@ -148,7 +171,6 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    // If userId provided, check ownership
     if (userId && order.userId !== userId) {
       throw new NotFoundException('Order not found');
     }
@@ -159,7 +181,7 @@ export class OrdersService {
     };
   }
 
-  // ─── CANCEL ORDER ────────────────────────────────────
+  // ─── CANCEL ORDER ─────────────────────────────────────
   async cancelOrder(
     userId: string,
     orderId: string,
@@ -172,12 +194,10 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    // Check ownership
     if (order.userId !== userId) {
       throw new NotFoundException('Order not found');
     }
 
-    // Can only cancel pending or confirmed orders
     const cancellableStatuses = [
       OrderStatus.PENDING,
       OrderStatus.CONFIRMED,
@@ -185,17 +205,15 @@ export class OrdersService {
 
     if (!cancellableStatuses.includes(order.status)) {
       throw new BadRequestException(
-        `Cannot cancel order with status "${order.status}". Only pending or confirmed orders can be cancelled.`,
+        `Cannot cancel order with status "${order.status}"`,
       );
     }
 
-    // Update order status
     await this.ordersRepository.updateOrder(order, {
       status:             OrderStatus.CANCELLED,
       cancellationReason: dto.reason,
     });
 
-    // Restore product stock
     for (const item of order.items) {
       const product =
         await this.productsRepository.findById(
@@ -232,7 +250,7 @@ export class OrdersService {
     return paginate(rows, count, page, limit);
   }
 
-  // ─── UPDATE ORDER STATUS (Admin) ─────────────────────
+  // ─── UPDATE ORDER STATUS (Admin) ──────────────────────
   async updateStatus(
     orderId: string,
     dto: UpdateOrderStatusDto,
@@ -244,7 +262,6 @@ export class OrdersService {
       throw new NotFoundException('Order not found');
     }
 
-    // Status flow validation
     const validTransitions: Record<string, string[]> = {
       [OrderStatus.PENDING]:    [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
       [OrderStatus.CONFIRMED]:  [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
@@ -259,7 +276,7 @@ export class OrdersService {
 
     if (!allowedNext.includes(dto.status)) {
       throw new BadRequestException(
-        `Cannot change status from "${order.status}" to "${dto.status}". Allowed: ${allowedNext.join(', ') || 'none'}`,
+        `Cannot change from "${order.status}" to "${dto.status}". Allowed: ${allowedNext.join(', ') || 'none'}`,
       );
     }
 
@@ -268,9 +285,26 @@ export class OrdersService {
       trackingNumber: dto.trackingNumber,
     });
 
+    // Emit status change event for email
+    const updatedOrder =
+      await this.ordersRepository.findById(orderId);
+
+    if (updatedOrder?.user) {
+      this.eventEmitter.emit(
+        EVENTS.ORDER_STATUS_CHANGED,
+        {
+          user: {
+            email:     updatedOrder.user.email,
+            firstName: updatedOrder.user.firstName,
+          },
+          order: updatedOrder,
+        },
+      );
+    }
+
     return {
       message: `Order status updated to "${dto.status}"`,
-      data: await this.ordersRepository.findById(orderId),
+      data: updatedOrder,
     };
   }
 
