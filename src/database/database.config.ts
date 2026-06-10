@@ -14,6 +14,7 @@ import { OrderItem } from '../modules/orders/entities/order-item.entity';
 import { Review } from '@/modules/reviews/entities/review.entity';
 import { Address } from '@/modules/address/entities/address.entity';
 import { Wishlist } from '@/modules/wishlist/entities/wishlist.entity';
+import { Payment } from '@/modules/payments/entities/payment.entity';
 
 export const databaseConfig = (
   configService: ConfigService,
@@ -32,7 +33,8 @@ export const databaseConfig = (
     Order, OrderItem, 
     Review,
     Address,
-    Wishlist,   // ← add
+    Wishlist,
+    Payment,   // ← add
   ],
   synchronize:    true,
   autoLoadModels: true,

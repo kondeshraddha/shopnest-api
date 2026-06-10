@@ -3,9 +3,13 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    rawBody: true,  // ← needed for Stripe webhook
+  });
 
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['/uploads/(.*)'],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -17,13 +21,8 @@ async function bootstrap() {
 
   app.enableCors();
 
-  // ─── Increase file upload limit ──────────────────────
-  const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.set('json limit', '10mb');
-
   await app.listen(3000);
-  console.log('🚀 ShopNest API running on: http://localhost:3000');
-  console.log('📁 Uploads served at: http://localhost:3000/uploads');
+  console.log('🚀 ShopNest running on: http://localhost:3000');
 }
 
 bootstrap();

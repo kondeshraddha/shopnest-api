@@ -26,6 +26,7 @@ import { AddressModule } from './modules/address/address.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { MailModule } from './modules/mail/mail.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { MailModule } from './modules/mail/mail.module';
     WishlistModule,
     UploadModule,
     MailModule,
+    PaymentsModule,
   ],
   providers: [
     { provide: APP_FILTER,      useClass: AllExceptionsFilter },
