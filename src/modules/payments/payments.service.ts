@@ -4,7 +4,6 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PaymentsRepository } from './payments.repository';
 import { OrdersRepository } from '../orders/orders.repository';
 import {
@@ -19,32 +18,22 @@ import {
 } from '../../common/constants';
 import { paginate } from '../../common/utils/pagination.util';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import Stripe from 'stripe';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(
     PaymentsService.name,
   );
-  private stripe: Stripe;
 
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
     private readonly ordersRepository: OrdersRepository,
-    private readonly configService: ConfigService,
     private readonly eventEmitter: EventEmitter2,
-  ) {
-    // Initialize Stripe
-    this.stripe = new Stripe(
-      this.configService.get<string>(
-        'stripe.secretKey',
-      ) || '',
-      { apiVersion: '2024-04-10' },
-    );
-  }
+  ) {}
 
-  // ─── CREATE PAYMENT INTENT ────────────────────────────
-  async createPaymentIntent(
+  // ─── CREATE PAYMENT ORDER (Mock) ──────────────────────
+  async createPaymentOrder(
     userId: string,
     dto: CreatePaymentIntentDto,
   ) {
@@ -56,19 +45,19 @@ export class PaymentsService {
       throw new NotFoundException('Order not found');
     }
 
-    // Check order belongs to user
+    // Check ownership
     if (order.userId !== userId) {
       throw new NotFoundException('Order not found');
     }
 
-    // Check order status
+    // Check order is pending
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException(
         'Only pending orders can be paid',
       );
     }
 
-    // Check if payment already exists
+    // Check already paid
     const existingPayment =
       await this.paymentsRepository.findByOrderId(
         dto.orderId,
@@ -83,171 +72,110 @@ export class PaymentsService {
       );
     }
 
-    // Amount in smallest currency unit (paise for INR)
-    const amount = Math.round(order.totalAmount * 100);
-    const currency =
-      this.configService.get<string>('stripe.currency')
-      || 'inr';
+    // Generate mock payment ID
+    const mockPaymentIntentId = `mock_${uuidv4()}`;
 
-    // Create Stripe Payment Intent
-    const paymentIntent =
-      await this.stripe.paymentIntents.create({
-        amount,
-        currency,
-        metadata: {
-          orderId:     order.id,
-          orderNumber: order.orderNumber,
-          userId,
-        },
-      });
-
-    // Save payment record in database
+    // Save payment record
     const payment = await this.paymentsRepository.create({
-      orderId:              order.id,
-      status:               PaymentStatus.PENDING,
-      method:               PaymentMethod.CARD,
-      amount:               order.totalAmount,
-      currency,
-      stripePaymentIntentId: paymentIntent.id,
+      orderId:               order.id,
+      status:                PaymentStatus.PENDING,
+      method:                PaymentMethod.CARD,
+      amount:                order.totalAmount,
+      currency:              'INR',
+      stripePaymentIntentId: mockPaymentIntentId,
     });
 
     this.logger.log(
-      `Payment intent created: ${paymentIntent.id}`,
+      `Mock payment order created: ${mockPaymentIntentId}`,
     );
 
     return {
-      message: 'Payment intent created successfully',
+      message: 'Payment order created successfully',
       data: {
-        paymentId:    payment.id,
-        clientSecret: paymentIntent.client_secret,
-        amount:       order.totalAmount,
-        currency,
-        orderNumber:  order.orderNumber,
+        paymentId:     payment.id,
+        mockPaymentId: mockPaymentIntentId,
+        amount:        order.totalAmount,
+        currency:      'INR',
+        orderNumber:   order.orderNumber,
+        instructions:  'Use POST /payments/simulate to simulate payment success',
       },
     };
   }
 
-  // ─── HANDLE STRIPE WEBHOOK ────────────────────────────
-  async handleWebhook(
-    payload: Buffer,
-    signature: string,
+  // ─── SIMULATE PAYMENT (Mock) ──────────────────────────
+  // This simulates what payment gateway does
+  async simulatePayment(
+    paymentId: string,
+    success: boolean,
   ) {
-    const webhookSecret =
-      this.configService.get<string>(
-        'stripe.webhookSecret',
-      ) || '';
+    const payment =
+      await this.paymentsRepository.findById(paymentId);
 
-    let event: Stripe.Event;
+    if (!payment) {
+      throw new NotFoundException('Payment not found');
+    }
 
-    try {
-      event = this.stripe.webhooks.constructEvent(
-        payload,
-        signature,
-        webhookSecret,
-      );
-    } catch (err) {
+    if (payment.status !== PaymentStatus.PENDING) {
       throw new BadRequestException(
-        `Webhook signature verification failed`,
+        'Payment already processed',
       );
     }
 
-    // Handle different event types
-    switch (event.type) {
-
-      // ─── Payment Successful ──────────────────────────
-      case 'payment_intent.succeeded': {
-        const paymentIntent =
-          event.data.object as Stripe.PaymentIntent;
-
-        await this.handlePaymentSuccess(paymentIntent);
-        break;
-      }
-
-      // ─── Payment Failed ──────────────────────────────
-      case 'payment_intent.payment_failed': {
-        const paymentIntent =
-          event.data.object as Stripe.PaymentIntent;
-
-        await this.handlePaymentFailed(paymentIntent);
-        break;
-      }
-
-      default:
-        this.logger.log(
-          `Unhandled webhook event: ${event.type}`,
-        );
-    }
-
-    return { received: true };
-  }
-
-  // ─── HANDLE PAYMENT SUCCESS ───────────────────────────
-  private async handlePaymentSuccess(
-    paymentIntent: Stripe.PaymentIntent,
-  ) {
-    const payment =
-      await this.paymentsRepository.findByStripeIntentId(
-        paymentIntent.id,
-      );
-
-    if (!payment) return;
-
-    // Update payment status
-    await this.paymentsRepository.update(payment, {
-      status:         PaymentStatus.COMPLETED,
-      stripeChargeId: paymentIntent.latest_charge as string,
-      paidAt:         new Date(),
-    });
-
-    // Update order status to confirmed
-    const order =
-      await this.ordersRepository.findById(
-        payment.orderId,
-      );
-
-    if (order) {
-      await this.ordersRepository.updateOrder(order, {
-        status: OrderStatus.CONFIRMED,
+    if (success) {
+      // ─── Payment Success ──────────────────────────
+      await this.paymentsRepository.update(payment, {
+        status:         PaymentStatus.COMPLETED,
+        stripeChargeId: `mock_charge_${uuidv4()}`,
+        paidAt:         new Date(),
       });
-    }
 
-    this.logger.log(
-      `Payment successful: ${paymentIntent.id}`,
-    );
+      // Update order to confirmed
+      const order =
+        await this.ordersRepository.findById(
+          payment.orderId,
+        );
 
-    // Emit payment success event
-    this.eventEmitter.emit(
-      EVENTS.PAYMENT_SUCCESS,
-      { payment, order },
-    );
-  }
+      if (order) {
+        await this.ordersRepository.updateOrder(order, {
+          status: OrderStatus.CONFIRMED,
+        });
+      }
 
-  // ─── HANDLE PAYMENT FAILED ────────────────────────────
-  private async handlePaymentFailed(
-    paymentIntent: Stripe.PaymentIntent,
-  ) {
-    const payment =
-      await this.paymentsRepository.findByStripeIntentId(
-        paymentIntent.id,
+      this.eventEmitter.emit(
+        EVENTS.PAYMENT_SUCCESS,
+        { payment, order },
       );
 
-    if (!payment) return;
+      return {
+        message: '✅ Payment simulated successfully!',
+        data: {
+          paymentId:   payment.id,
+          status:      PaymentStatus.COMPLETED,
+          orderNumber: order?.orderNumber,
+          paidAt:      new Date(),
+        },
+      };
 
-    await this.paymentsRepository.update(payment, {
-      status:        PaymentStatus.FAILED,
-      failureReason:
-        paymentIntent.last_payment_error?.message ||
-        'Payment failed',
-    });
+    } else {
+      // ─── Payment Failed ───────────────────────────
+      await this.paymentsRepository.update(payment, {
+        status:        PaymentStatus.FAILED,
+        failureReason: 'Payment declined (simulated)',
+      });
 
-    this.logger.log(
-      `Payment failed: ${paymentIntent.id}`,
-    );
+      this.eventEmitter.emit(
+        EVENTS.PAYMENT_FAILED,
+        { payment },
+      );
 
-    this.eventEmitter.emit(
-      EVENTS.PAYMENT_FAILED,
-      { payment },
-    );
+      return {
+        message: '❌ Payment simulation failed!',
+        data: {
+          paymentId: payment.id,
+          status:    PaymentStatus.FAILED,
+        },
+      };
+    }
   }
 
   // ─── GET PAYMENT BY ORDER ─────────────────────────────
@@ -295,22 +223,12 @@ export class PaymentsService {
       );
     }
 
-    // Create refund in Stripe
-    await this.stripe.refunds.create({
-      payment_intent: payment.stripePaymentIntentId,
-      reason: 'requested_by_customer',
-    });
-
-    // Update payment status
     await this.paymentsRepository.update(payment, {
       status:     PaymentStatus.REFUNDED,
       refundedAt: new Date(),
-      metadata: {
-        refundReason: dto.reason,
-      },
+      metadata:   { refundReason: dto.reason },
     });
 
-    // Update order status
     const order =
       await this.ordersRepository.findById(
         payment.orderId,
@@ -332,7 +250,6 @@ export class PaymentsService {
   async getAllPayments(page: number, limit: number) {
     const { count, rows } =
       await this.paymentsRepository.findAll(page, limit);
-
     return paginate(rows, count, page, limit);
   }
 
@@ -340,10 +257,6 @@ export class PaymentsService {
   async getStats() {
     const stats =
       await this.paymentsRepository.getStats();
-
-    return {
-      message: 'Payment statistics',
-      data: stats,
-    };
+    return { message: 'Payment statistics', data: stats };
   }
 }

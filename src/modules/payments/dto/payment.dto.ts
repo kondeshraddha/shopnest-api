@@ -1,28 +1,30 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  IsUUID, IsNotEmpty, IsString,
+  IsUUID, IsNotEmpty,
+  IsString, IsBoolean,
 } from 'class-validator';
 
-// ─── CREATE PAYMENT INTENT ────────────────────────────
 export class CreatePaymentIntentDto {
-
-  @ApiProperty({
-    description: 'Order UUID to pay for',
-    example: 'order-uuid-here',
-  })
-  @IsUUID()
-  @IsNotEmpty()
+  @ApiProperty({ example: 'order-uuid-here' })
+  @IsUUID() @IsNotEmpty()
   orderId!: string;
 }
 
-// ─── REFUND ───────────────────────────────────────────
-export class RefundPaymentDto {
+export class SimulatePaymentDto {
+  @ApiProperty({ example: 'payment-uuid-here' })
+  @IsUUID() @IsNotEmpty()
+  paymentId!: string;
 
   @ApiProperty({
-    description: 'Reason for refund',
-    example: 'Customer requested refund',
+    example: true,
+    description: 'true = success, false = failed',
   })
-  @IsString()
-  @IsNotEmpty()
+  @IsBoolean()
+  success!: boolean;
+}
+
+export class RefundPaymentDto {
+  @ApiProperty({ example: 'Customer requested refund' })
+  @IsString() @IsNotEmpty()
   reason!: string;
 }

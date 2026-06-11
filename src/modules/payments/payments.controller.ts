@@ -2,15 +2,14 @@ import {
   Controller, Post, Get, Body,
   Param, Query, UseGuards,
   ParseUUIDPipe, HttpCode, HttpStatus,
-  Headers, RawBodyRequest, Req,
 } from '@nestjs/common';
 import {
   ApiTags, ApiBearerAuth, ApiOperation,
 } from '@nestjs/swagger';
-import { Request } from 'express';
 import { PaymentsService } from './payments.service';
 import {
   CreatePaymentIntentDto,
+  SimulatePaymentDto,
   RefundPaymentDto,
 } from './dto/payment.dto';
 import { Public } from '../../common/decorators/public.decorator';
@@ -26,36 +25,30 @@ export class PaymentsController {
     private readonly paymentsService: PaymentsService,
   ) {}
 
-  // ─── CREATE PAYMENT INTENT ────────────────────────────
-  @Post('create-intent')
+  // ─── CREATE PAYMENT ORDER ─────────────────────────────
+  @Post('create-order')
   @ApiBearerAuth()
-  @ApiOperation({
-    summary: 'Create Stripe payment intent for order',
-  })
-  createPaymentIntent(
+  @ApiOperation({ summary: 'Create payment order' })
+  createPaymentOrder(
     @CurrentUser('id') userId: string,
     @Body() dto: CreatePaymentIntentDto,
   ) {
-    return this.paymentsService.createPaymentIntent(
+    return this.paymentsService.createPaymentOrder(
       userId, dto,
     );
   }
 
-  // ─── STRIPE WEBHOOK ───────────────────────────────────
-  // Public because Stripe calls this
+  // ─── SIMULATE PAYMENT ─────────────────────────────────
   @Public()
-  @Post('webhook')
+  @Post('simulate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Stripe webhook handler (called by Stripe)',
+    summary: 'Simulate payment success or failure (for testing)',
   })
-  handleWebhook(
-    @Req() req: RawBodyRequest<Request>,
-    @Headers('stripe-signature') signature: string,
-  ) {
-    return this.paymentsService.handleWebhook(
-      req.rawBody as Buffer,
-      signature,
+  simulatePayment(@Body() dto: SimulatePaymentDto) {
+    return this.paymentsService.simulatePayment(
+      dto.paymentId,
+      dto.success,
     );
   }
 
@@ -93,9 +86,7 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({
-    summary: '[Admin] Get payment statistics',
-  })
+  @ApiOperation({ summary: '[Admin] Payment statistics' })
   getStats() {
     return this.paymentsService.getStats();
   }
@@ -105,7 +96,7 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  @ApiOperation({ summary: '[Admin] Refund a payment' })
+  @ApiOperation({ summary: '[Admin] Refund payment' })
   refundPayment(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: RefundPaymentDto,
