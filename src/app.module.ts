@@ -12,32 +12,34 @@ import {
   uploadConfig, throttleConfig,
 } from './config';
 import { databaseConfig } from './database/database.config';
+
+// ─── Common ──────────────────────────────────────────────
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
+
+// ─── Modules ─────────────────────────────────────────────
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ProductsModule } from './modules/products/products.module';
 import { CartModule } from './modules/cart/cart.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AddressModule } from './modules/address/address.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { MailModule } from './modules/mail/mail.module';
-import { PaymentsModule } from './modules/payments/payments.module';
 
 @Module({
   imports: [
 
-    // ─── Serve Static Files ───────────────────────────
+    // ─── Serve Static Files (uploads) ────────────────
     ServeStaticModule.forRoot({
       rootPath:  join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
-      serveStaticOptions: {
-        index: false,
-      },
+      serveStaticOptions: { index: false },
     }),
 
     // ─── Event Emitter ────────────────────────────────
@@ -53,9 +55,10 @@ import { PaymentsModule } from './modules/payments/payments.module';
       isGlobal:    true,
       envFilePath: '.env',
       load: [
-        appConfig, dbConfig, jwtConfig,
-        mailConfig, stripeConfig,
-        uploadConfig, throttleConfig,
+        appConfig,   dbConfig,
+        jwtConfig,   mailConfig,
+        stripeConfig, uploadConfig,
+        throttleConfig,
       ],
     }),
 
@@ -73,17 +76,30 @@ import { PaymentsModule } from './modules/payments/payments.module';
     ProductsModule,
     CartModule,
     OrdersModule,
+    PaymentsModule,
     ReviewsModule,
     AddressModule,
     WishlistModule,
     UploadModule,
     MailModule,
-    PaymentsModule,
   ],
+
   providers: [
-    { provide: APP_FILTER,      useClass: AllExceptionsFilter },
-    { provide: APP_INTERCEPTOR, useClass: ResponseInterceptor },
-    { provide: APP_GUARD,       useClass: JwtAuthGuard },
+    // Global Exception Filter
+    {
+      provide:  APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+    // Global Response Interceptor
+    {
+      provide:  APP_INTERCEPTOR,
+      useClass: ResponseInterceptor,
+    },
+    // Global JWT Auth Guard
+    {
+      provide:  APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
   ],
 })
 export class AppModule {}
